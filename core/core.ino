@@ -30,9 +30,15 @@ struct snakeType
   
 snakeType snake [30];
 const int magenta = strip0.Color(255, 0, 255);
-const int black = strip9.Color(0,0,0);
-const int other = strip0.Color(0,255,0);
+const int red = strip9.Color(0,0,0);
+const int green = strip0.Color(0,255,0);
+const int blue = strip0.Color(0,0,255);
+
+int gbl_colour = blue;
+
 int difficulty = 400;
+
+//set the default starting direction
 String incoming = "dir_right";
 
 void setup() {
@@ -61,59 +67,66 @@ void setup() {
   //strip1.show();
 }
 
-void loop() {
-  // Some example procedures showing how to display to the pixels:
-  
+void loop() {  
   while (Serial.available() > 0) {
-    incoming = Serial.readString();
-    Serial.println(incoming);
-    }
-    //delay between snake moving
-    delay(difficulty);
-clearAll();
+      incoming = Serial.readString();
+      Serial.println(incoming);
+      }
+  //delay between snake moving
+  delay(difficulty);
+  clearAll();
+  
   if (incoming == "dir_up") {
        Serial.println("Go up");
        if (snake[0].yCo < 9){
-         snake[0].yCo++;
-       }
+           snake[0].yCo++;
+         }
        else {
-         snake[0].yCo = 0;
-       }
-       setBox(snake[0].xCo,snake[0].yCo, magenta);
+           snake[0].yCo = 0;
+         }
      }
-    if (incoming == "dir_down") {
-       Serial.println("Go down");
-       if (snake[0].yCo >0){
-         snake[0].yCo--;
+   if (incoming == "dir_down") {
+         Serial.println("Go down");
+         if (snake[0].yCo >0){
+             snake[0].yCo--;
+           }
+         else {
+             snake[0].yCo = 9;
+           }
        }
-       else {
-         snake[0].yCo = 9;
-       }
-       setBox(snake[0].xCo,snake[0].yCo, magenta);
-     }
-    
-    
   if (incoming == "dir_right") {
-       Serial.println("Go right");
-       if (snake[0].xCo < 9){
-         snake[0].xCo++;
+         Serial.println("Go right");
+         if (snake[0].xCo < 9){
+             snake[0].xCo++;
+           }
+         else {
+             snake[0].xCo = 0;
+           }
        }
-       else {
-         snake[0].xCo = 0;
-       }
-       setBox(snake[0].xCo,snake[0].yCo, magenta);
-     }
-     
    if (incoming == "dir_left") {
-   Serial.println("Go left");
-   if (snake[0].xCo > 0){
-     snake[0].xCo--;
+     Serial.println("Go left");
+     if (snake[0].xCo > 0){
+         snake[0].xCo--;
+       }
+     else {
+         snake[0].xCo = 9;
+       }
    }
-   else {
-     snake[0].xCo = 9;
+   
+   if (incoming == "clr_blue") {
+     Serial.println("Change to blue");
+     gbl_colour = blue;
    }
-   setBox(snake[0].xCo,snake[0].yCo, magenta);
- }
+   if (incoming == "clr_green") {
+     Serial.println("Change to green");
+     gbl_colour = green;
+   }
+   if (incoming == "clr_red") {
+     Serial.println("Change to red");
+     gbl_colour = red;
+   }
+   setBox(snake[0].xCo,snake[0].yCo, gbl_colour);
+
   }
 
 void clearAll(){
