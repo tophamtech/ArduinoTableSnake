@@ -9,7 +9,7 @@
 //   NEO_GRB     Pixels are wired for GRB bitstream
 //   NEO_KHZ400  400 KHz bitstream (e.g. FLORA pixels)
 //   NEO_KHZ800  800 KHz bitstream (e.g. High Density LED strip0)
-Adafruit_NeoPixel strip0 = Adafruit_NeoPixel(10, 2, NEO_RGB + NEO_KHZ800);
+Adafruit_NeoPixel strip0 = Adafruit_NeoPixel(10, 2, NEO_GRB + NEO_KHZ800);
 Adafruit_NeoPixel strip1 = Adafruit_NeoPixel(10, 3, NEO_GRB + NEO_KHZ800);
 Adafruit_NeoPixel strip2 = Adafruit_NeoPixel(10, 4, NEO_GRB + NEO_KHZ800);
 Adafruit_NeoPixel strip3 = Adafruit_NeoPixel(10, 5, NEO_GRB + NEO_KHZ800);
@@ -28,21 +28,33 @@ struct snakeType
     int yCo;
 };
   
+const uint32_t red = strip0.Color(255, 0,0);
+const uint32_t turq = strip0.Color(0,255,255);
+const uint32_t pink = strip0.Color(255, 51, 153);
+const uint32_t blue = strip0.Color(0, 0, 255);
+const uint32_t orange = strip0.Color(255, 128, 0);
+const uint32_t green = strip0.Color(0, 255,0);
+const uint32_t white = strip0.Color(255, 255, 255);
+const uint32_t yellow = strip0.Color(255, 255, 0);
+const uint32_t purple = strip0.Color(153, 0, 153);
+
+//max length of snake
 snakeType snake [30];
-const int magenta = strip0.Color(255, 0, 255);
-const int red = strip9.Color(0,0,0);
-const int green = strip0.Color(0,255,0);
-const int blue = strip0.Color(0,0,255);
+int snakeLength = 2;
+uint32_t gblColour = turq;
+uint32_t foodColour = red;
+int randX;
+int randY;
 
-int gbl_colour = blue;
+int score=0;
 
-int difficulty = 400;
+//higher is easier
+int difficulty = 300;
 
 //set the default starting direction
 String incoming = "dir_right";
 
 void setup() {
-  
   //Strip setup
   strip0.begin();
   strip1.begin();
@@ -55,16 +67,17 @@ void setup() {
   strip8.begin();
   strip9.begin();
   
-  snake[0].xCo = 8;
+  snake[0].xCo = 2;
   snake[0].yCo = 0;
-  setBox(snake[0].xCo,snake[0].yCo, magenta);
+  snake[1].xCo = 1;
+  snake[1].yCo = 0;
+  setBox(snake[0].xCo,snake[0].yCo, gblColour);
+  randomSeed(analogRead(0));
 
   //UART setup
   Serial.begin(9600);
   Serial.setTimeout(20);
-  
-  strip0.show(); // Initialize all pixels to 'off'
-  //strip1.show();
+  genFood();
 }
 
 void loop() {  
@@ -76,7 +89,9 @@ void loop() {
   delay(difficulty);
   clearAll();
   
-  if (incoming == "dir_up") {
+  //snake[0] is the snake head
+  
+  if (incoming.startsWith("dir_up")) {
        Serial.println("Go up");
        if (snake[0].yCo < 9){
            snake[0].yCo++;
@@ -85,7 +100,7 @@ void loop() {
            snake[0].yCo = 0;
          }
      }
-   if (incoming == "dir_down") {
+   if (incoming.startsWith("dir_down")) {
          Serial.println("Go down");
          if (snake[0].yCo >0){
              snake[0].yCo--;
@@ -94,7 +109,7 @@ void loop() {
              snake[0].yCo = 9;
            }
        }
-  if (incoming == "dir_right") {
+  if (incoming.startsWith("dir_right")) {
          Serial.println("Go right");
          if (snake[0].xCo < 9){
              snake[0].xCo++;
@@ -103,7 +118,7 @@ void loop() {
              snake[0].xCo = 0;
            }
        }
-   if (incoming == "dir_left") {
+   if (incoming.startsWith("dir_left")) {
      Serial.println("Go left");
      if (snake[0].xCo > 0){
          snake[0].xCo--;
@@ -113,24 +128,79 @@ void loop() {
        }
    }
    
-   if (incoming == "clr_blue") {
+   //colour changers
+   if (incoming.endsWith("clr_blue")) {
      Serial.println("Change to blue");
-     gbl_colour = blue;
+     gblColour = blue;
    }
-   if (incoming == "clr_green") {
+   if (incoming.endsWith("clr_green")) {
      Serial.println("Change to green");
-     gbl_colour = green;
+     gblColour = green;
    }
-   if (incoming == "clr_red") {
+   if (incoming.endsWith("clr_red")) {
      Serial.println("Change to red");
-     gbl_colour = red;
+     gblColour = red;
    }
-   setBox(snake[0].xCo,snake[0].yCo, gbl_colour);
-
+   if (incoming.endsWith("clr_turq")) {
+     Serial.println("Change to turq");
+     gblColour = turq;
+   }
+   if (incoming.endsWith("clr_pink")) {
+     Serial.println("Change to pink");
+     gblColour = pink;
+   }
+   if (incoming.endsWith("clr_orange")) {
+     Serial.println("Change to orange");
+     gblColour = orange;
+   }
+   if (incoming.endsWith("clr_white")) {
+     Serial.println("Change to white");
+     gblColour = white;
+   }
+   if (incoming.endsWith("clr_yellow")) {
+     Serial.println("Change to yellow");
+     gblColour = yellow;
+   }
+   if (incoming.endsWith("clr_purple")) {
+     Serial.println("Change to purple");
+     gblColour = purple;
+   }
+   
+   
+   checkImpact();
+   setBox(snake[0].xCo,snake[0].yCo, gblColour);
+   setBox(randX,randY,foodColour);
+   snakeShift();
+   
+   if ((snake[0].xCo == randX) && (snake[0].yCo == randY)){
+     //snake has eaten food
+     score=score+1;
+     snakeLength++;
+     genFood();
+   }
   }
+  
+void checkImpact(){
+  for (int i=1;i<snakeLength;i++){
+      if ((snake[0].xCo == snake[i].xCo) && (snake[0].yCo == snake[i].yCo)){
+        Serial.println("You deeaadd");
+        died();
+    };
+  }
+}
+  
+void died(){
+  delay(2000);
+  score=0;
+  snakeLength=2;
+  snake[0].xCo = 2;
+  snake[0].yCo = 0;
+  snake[1].xCo = 1;
+  snake[1].yCo = 0;
+}  
+  
 
 void clearAll(){
-
   for (int i=0;i<10;i++){
     for (int j=0;j<10;j++){
       setBox(i,j,0);
@@ -138,7 +208,20 @@ void clearAll(){
   };
 }
 
-void setBox(int strip, int pixel, int colour) {
+void snakeShift(){
+  for (int i=snakeLength; i>0; i--){
+    snake[i] = snake[i-1];
+    setBox(snake[i].xCo,snake[i].yCo, gblColour);
+  };
+}
+
+void genFood(){
+  randX = random(10);
+  randY = random(10);
+ }
+
+
+void setBox(int strip, int pixel, uint32_t colour) {
   switch (strip)
   {
     case 0:
@@ -181,59 +264,6 @@ void setBox(int strip, int pixel, int colour) {
       strip9.setPixelColor(pixel,colour);
       strip9.show();
       break;
-    
-  }
-  
-}
-
-
-// Fill the dots one after the other with a color
-void colorWipe(uint32_t c, uint8_t wait) {
-  for(uint16_t i=0; i<strip0.numPixels(); i++) {
-      strip0.setPixelColor(i, c);
-      strip0.show();
-      delay(wait);
   }
 }
-
-void rainbow(uint8_t wait) {
-  uint16_t i, j;
-
-  for(j=0; j<256; j++) {
-    for(i=0; i<strip0.numPixels(); i++) {
-      strip0.setPixelColor(i, Wheel((i+j) & 255));
-    }
-    strip0.show();
-    delay(wait);
-  }
-}
-
-// Slightly different, this makes the rainbow equally distributed throughout
-void rainbowCycle(uint8_t wait) {
-  uint16_t i, j;
-
-  for(j=0; j<256*5; j++) { // 5 cycles of all colors on wheel
-    for(i=0; i< strip0.numPixels(); i++) {
-      strip0.setPixelColor(i, Wheel(((i * 256 / strip0.numPixels()) + j) & 255));
-    }
-    strip0.show();
-    delay(wait);
-  }
-}
-
-// Input a value 0 to 255 to get a color value.
-// The colours are a transition r - g - b - back to r.
-uint32_t Wheel(byte WheelPos) {
-  if(WheelPos < 85) {
-   return strip0.Color(WheelPos * 3, 255 - WheelPos * 3, 0);
-  } else if(WheelPos < 170) {
-   WheelPos -= 85;
-   return strip0.Color(255 - WheelPos * 3, 0, WheelPos * 3);
-  } else {
-   WheelPos -= 170;
-   return strip0.Color(0, WheelPos * 3, 255 - WheelPos * 3);
-  }
-}
-
-
 
